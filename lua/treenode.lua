@@ -25,6 +25,10 @@ function TreeNode:set_parent(parent)
 	self.parent = parent
 end
 
+function TreeNode:add_to_prev_content(line)
+	self.contents[#self.contents] = self.contents[#self.contents] .. "\n" .. line
+end
+
 function TreeNode:get_level()
 	return self.level
 end

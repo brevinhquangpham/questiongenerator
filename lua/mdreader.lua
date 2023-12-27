@@ -1,6 +1,14 @@
 local tree_node = require("treenode")
 local M = {}
 
+local function is_only_whitespace(line)
+	return line:match("^%s*$") ~= nil
+end
+
+local function starts_with_tab(line)
+	return line:match("^%s%s") ~= nil
+end
+
 local function count_tokens(str)
 	local count = 0
 	-- Iterate over all words in the string
@@ -50,6 +58,9 @@ local function memoize_file_to_tree(file)
 			local node = tree_node.new(line, 1)
 			table.insert(tree, node)
 			current_node = node
+		elseif starts_with_tab(line) then
+			current_node:add_to_prev_content(line)
+			print("ran")
 		else
 			current_node:add_to_contents(line)
 		end
@@ -97,67 +108,65 @@ local function get_parent_headers(node)
 		table.insert(result, current_node.parent.header)
 		current_node = current_node.parent
 	end
-
-	-- for i = 1, #result do
-	-- 	print(result[i])
-	-- end
 	return result
 end
+
+local function handle_header(node, chunk, token_max)
+	local header_table = get_parent_headers(node)
+	if count_tokens(chunk) + count_tokens(node.header) < token_max then
+		return chunk .. node.header .. "\n"
+	else
+		return reverse_table_as_string(header_table)
+	end
+end
+
+local function handle_contents(node, chunk, token_max, result)
+	for i = 1, #node.contents do
+		local content = node.contents[i]
+		if not is_only_whitespace(content) then
+			if count_tokens(chunk) + count_tokens(content) < token_max then
+				chunk = chunk .. content .. "\n"
+			else
+				table.insert(result, chunk)
+				chunk = reverse_table_as_string(get_parent_headers(node)) .. content .. "\n"
+			end
+		end
+	end
+	return chunk
+end
+
+local function handle_children(node, token_max, chunk, result) end
 
 local function reconstruct_header(node, token_max, current_chunk, header_node)
 	local result = {}
 	local chunk = current_chunk
 
-	if #chunk + #node.header < token_max then
-		local parent
-		if node.parent == nil then
-			parent = "nil"
-		else
-			parent = node.parent.header
-		end
-		chunk = chunk .. node.header .. "[" .. parent .. "]\n"
-	else
-		table.insert(result, chunk)
-		local header_table = get_parent_headers(node)
-		chunk = reverse_table_as_string(header_table)
-	end
-
-	for i = 1, #node.contents, 1 do
-		local contents = node.contents[i]
-		if #chunk + #contents < token_max then
-			if #contents >= 1 then
-				chunk = chunk .. node.contents[i] .. "\n"
-				-- print(node.contents[i] .. "For content line (" .. i .. ")")
-			end
-		else
-			table.insert(result, chunk)
-			local header_table = get_parent_headers(node)
-			chunk = reverse_table_as_string(header_table)
-			-- print("--------------")
-		end
-	end
-
-	local current_node = node
-
-	for i = 1, #current_node.children, 1 do
-		local inner_result, output_chunk = reconstruct_header(current_node.children[i], token_max, chunk, false)
-		chunk = output_chunk
-		table_concat(result, inner_result)
-	end
-
-	if header_node then
-		table.insert(result, chunk)
-	end
+	chunk = handle_header(node, chunk, token_max)
+	chunk = handle_contents(node, chunk, token_max, result)
+	chunk = handle_children(node, token_max, chunk, result)
 
 	return result, chunk
 end
 
+handle_children = function(node, token_max, chunk, result)
+	for i = 1, #node.children do
+		local inner_result, output_chunk = reconstruct_header(node.children[i], token_max, chunk, false)
+		chunk = output_chunk
+		table_concat(result, inner_result)
+	end
+	return chunk
+end
+
 local function reconstruct_tree(tree, token_max)
 	local result = {}
+	local chunk = ""
 	print(tree)
 	for i = 1, #tree do
-		table_concat(result, reconstruct_header(tree[i], token_max, "", true))
+		local inner_result, output_chunk = reconstruct_header(tree[i], token_max, chunk, true)
+		table_concat(result, inner_result)
+		chunk = output_chunk
 	end
+	table.insert(result, chunk)
 	return result
 end
 

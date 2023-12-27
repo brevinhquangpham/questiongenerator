@@ -5,6 +5,6 @@ local mdreader = require("mdreader")
 
 local result = mdreader.read_md_file("testfiles/MODMFinal.md")
 for i = 1, #result do
-	print(result[i])
+	print(string.format("%q", result[i]))
 	print("--------------------------------------------------")
 end
