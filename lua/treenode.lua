@@ -1,7 +1,8 @@
 local TreeNode = {}
+TreeNode.__index = TreeNode
 
 function TreeNode.new(header, level, parent)
-	local node = { level = level, header = header, parent = nil, contents = {}, children = {} }
+	local node = setmetatable({ level = level, header = header, parent = nil, contents = {}, children = {} }, TreeNode)
 
 	if parent then
 		node.parent = parent
@@ -12,6 +13,12 @@ end
 
 function TreeNode:add_children(children)
 	table.insert(self.children, children)
+end
+
+function TreeNode:print_contents()
+	for i = 1, #self.contents do
+		print(self.contents[i])
+	end
 end
 
 function TreeNode:set_parent(parent)

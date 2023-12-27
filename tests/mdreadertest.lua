@@ -1,5 +1,10 @@
-local luaunit = require("luaunit")
+package.path = package.path .. ";../lua/?.lua"
 
+local luaunit = require("luaunit")
 local mdreader = require("mdreader")
 
-function test_read() end
+local result = mdreader.read_md_file("testfiles/MODMFinal.md")
+for i = 1, #result do
+	print(result[i])
+	print("--------------------------------------------------")
+end
