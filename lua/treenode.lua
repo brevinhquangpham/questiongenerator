@@ -26,10 +26,6 @@ function TreeNode:add_to_contents(contents_to_add)
 	table.insert(self.contents, contents_to_add)
 end
 
-function TreeNode:edit_contents(contents)
-	self.contente = contents
-end
-
 function TreeNode:get_top_parent()
 	local parent
 
